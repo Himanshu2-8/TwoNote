@@ -1,5 +1,7 @@
 import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
+import path from 'path'
+import fs from 'fs'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 
@@ -22,7 +24,7 @@ function createWindow() {
       contextIsolation: true,
       frame: false,
       transparent: true,
-      backgroundColor: '#00000000',
+      backgroundColor: '#00000000'
     }
   })
 
@@ -60,6 +62,17 @@ app.whenReady().then(() => {
 
   // IPC test
   ipcMain.on('ping', () => console.log('pong'))
+
+  ipcMain.on('notes:getAll', async () => {
+    const dir = path.join(app.getPath('userData'), 'notes')
+    fs.readdir(dir, (err, files) => {
+      if (err) return
+      let allFiles = files.map((file) => {
+        return { name: file }
+      })
+      return allFiles
+    })
+  })
 
   createWindow()
 
