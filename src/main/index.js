@@ -11,10 +11,18 @@ function createWindow() {
     show: false,
     autoHideMenuBar: true,
     ...(process.platform === 'linux' ? { icon } : {}),
+    title: 'TwoNode',
+    titleBarStyle: 'hidden',
+    vibrancy: 'under-window',
+    visualEffectState: 'active',
+    frame: false,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: true,
-      contextIsolation: true
+      contextIsolation: true,
+      frame: false,
+      transparent: true,
+      backgroundColor: '#00000000',
     }
   })
 

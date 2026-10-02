@@ -1,8 +1,6 @@
 function App() {
   return (
-    <div className="flex h-screen items-center justify-center bg-slate-900 text-white">
-      hello from TwoNote.
-    </div>
+    <div className="flex h-screen items-center justify-center text-white">hello from TwoNote.</div>
   )
 }
 
