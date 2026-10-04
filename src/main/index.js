@@ -1,9 +1,37 @@
 import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
-import path from 'path'
-import fs from 'fs'
+import { promises as fsp } from 'fs'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
+
+const notesDir = join(app.getPath('userData'), 'notes')
+
+// {
+//   "type": "doc",
+//   "content": [
+//     { "type": "heading", "content": [{ "type": "text", "text": "Shopping" }] },
+//     { "type": "paragraph", "content": [
+//         { "type": "text", "text": "Buy " },
+//         { "type": "text", "text": "milk", "marks": [{ "type": "bold" }] }
+//     ]}
+//   ]
+// }
+
+function extractText(node) {
+  if (!node) return ''
+
+  if (node.type === 'text') return node.text ?? ''
+
+  if (!node.content) return ''
+
+  let result = ''
+
+  for (let i = 0; i < node.content.length; i++) {
+    result += extractText(node.content[i]) + ' '
+  }
+
+  return result
+}
 
 function createWindow() {
   // Create the browser window.
@@ -63,15 +91,40 @@ app.whenReady().then(() => {
   // IPC test
   ipcMain.on('ping', () => console.log('pong'))
 
-  ipcMain.on('notes:getAll', async () => {
-    const dir = path.join(app.getPath('userData'), 'notes')
-    fs.readdir(dir, (err, files) => {
-      if (err) return
-      let allFiles = files.map((file) => {
-        return { name: file }
-      })
-      return allFiles
-    })
+  ipcMain.handle('notes:getAll', async () => {
+    await fsp.makedir(notesDir, { recursive: true })
+    const files = await fsp.readdir(notesDir).filter((f) => f.endsWith('.json'))
+    return files
+  })
+
+  ipcMain.handle('notes:get', async (_event, id) => {
+    if (typeof id !== 'string' || !/^[0-9a-f-]{36}$/i.test(id)) {
+      throw new Error('Invalid note id')
+    }
+    const file = join(notesDir, `${id}.json`)
+    try {
+      return JSON.parse(await fsp.readFile(file, 'utf-8'))
+    } catch (error) {
+      if (error.code === 'ENOENT') return null
+      throw error
+    }
+  })
+
+  ipcMain.handle('notes:save', async (_event, note) => {
+    if (!note || typeof note !== 'object') {
+      throw new Error('Invalid note')
+    }
+  
+    const id =
+      typeof note.id === 'string' && /^[0-9a-f-]{36}$/i.test(note.id)
+        ? note.id
+        : crypto.randomUUID()
+  
+    await fsp.mkdir(notesDir, { recursive: true })
+    const file = join(notesDir, `${id}.json`)
+    const payload = { ...note, id }
+    await fsp.writeFile(file, JSON.stringify(payload, null, 2))
+    return id
   })
 
   createWindow()
